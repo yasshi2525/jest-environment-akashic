@@ -1,0 +1,12 @@
+{
+  "name": "@yasshi2525/jest-environment-akashic-global",
+  "version": "0.1.1",
+  "description": "Type definition of global variable for @yasshi2525/jest-environment-akashic",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": {
+    "name": "yasshi2525",
+    "url": "https://x.com/yasshi2525"
+  },
+  "license": "MIT"
+}

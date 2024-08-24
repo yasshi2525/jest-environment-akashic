@@ -1,6 +1,5 @@
 {
   "name": "@yasshi2525/jest-environment-akashic",
-  "private": true,
   "version": "0.1.1",
   "description": "Sandbox of akashic environment for unit test with jest",
   "files": [

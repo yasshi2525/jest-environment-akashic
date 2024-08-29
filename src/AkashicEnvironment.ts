@@ -5,6 +5,7 @@ import {Event} from "jest-circus";
 import {GameClient, GameContext} from "@akashic/headless-akashic";
 import fs from "node:fs";
 import path from "node:path";
+import crypto from 'node:crypto'
 
 const GAME_JSON_PATH = "game.json";
 const FAKE_MAIN_SCRIPT = "'use strict'\nmodule.exports = () => {}";

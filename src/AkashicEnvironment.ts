@@ -8,9 +8,9 @@ import path from "node:path";
 
 const GAME_JSON_PATH = "game.json";
 const FAKE_MAIN_SCRIPT = "'use strict'\nmodule.exports = () => {}";
-const TARGET_FAKE_MAIN_SCRIPT_PATH = ".main.fake.js";
-const FAKE_GAME_JSON_FILENAME = ".game.fake.json";
-const TARGET_FAKE_GAME_JSON_PATH = FAKE_GAME_JSON_FILENAME;
+const TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER = ".main.fake-{uuid}.js";
+const FAKE_GAME_JSON_FILENAME_HOLDER = ".game.fake-{uuid}.json";
+const TARGET_FAKE_GAME_JSON_PATH_HOLDER = FAKE_GAME_JSON_FILENAME_HOLDER;
 const DEFAULT_SCREENSHOT_DIR = "tmp/screenshot";
 const PLAYER_NAME = "test-user-001";
 const TEST_SCENE_NAME = "__test-scene__";
@@ -21,6 +21,7 @@ const TEST_SCENE_NAME = "__test-scene__";
 export class AkashicEnvironment extends NodeEnvironment {
   private readonly screenshotDir;
   private readonly originalGameJsonContents: GameConfiguration;
+  private _uuid?: string
   private gameContext?: GameContext<3>;
   private gameClient?: GameClient<3>;
   private needsSceneReplace = false;
@@ -41,9 +42,10 @@ export class AkashicEnvironment extends NodeEnvironment {
 
   override async setup() {
     await super.setup();
+    this._uuid = crypto.randomUUID()
     process.on("SIGINT", () => this.removeTempFiles());
     this.createFakeGameJson();
-    this.gameContext = new GameContext<3>({ gameJsonPath: TARGET_FAKE_GAME_JSON_PATH });
+    this.gameContext = new GameContext<3>({ gameJsonPath: this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER) });
     this.gameClient = await this.gameContext.getGameClient({
       player: { id: PLAYER_NAME, name: PLAYER_NAME },
       renderingMode: "canvas",
@@ -98,6 +100,16 @@ export class AkashicEnvironment extends NodeEnvironment {
     }
   }
 
+  /**
+   * 一時ファイルを作成する際の識別子を取得します.
+   */
+  get uuid() {
+    if (!this._uuid) {
+      throw new Error('uuid is not exist before setup()')
+    }
+    return this._uuid
+  }
+
   private parseGameJson (): GameConfiguration {
     if (!fs.existsSync(GAME_JSON_PATH)) {
       throw new Error("game.json was not found");
@@ -108,7 +120,7 @@ export class AkashicEnvironment extends NodeEnvironment {
   private createFakeGameJson () {
     if ("main" in this.originalGameJsonContents) {
       this.insertFakeMainAsset();
-      fs.writeFileSync(TARGET_FAKE_GAME_JSON_PATH, JSON.stringify(this.originalGameJsonContents));
+      fs.writeFileSync(this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER), JSON.stringify(this.originalGameJsonContents));
     } else {
       throw new Error("invalid game.json file. 'main' property was not found")
     }
@@ -125,11 +137,11 @@ export class AkashicEnvironment extends NodeEnvironment {
     if (Array.isArray(this.originalGameJsonContents.assets)) {
       throw new Error("array type of 'assets' parameter in game.json is not supported");
     }
-    fs.writeFileSync(TARGET_FAKE_MAIN_SCRIPT_PATH, FAKE_MAIN_SCRIPT);
-    this.originalGameJsonContents.main = "./" + TARGET_FAKE_MAIN_SCRIPT_PATH;
-    this.originalGameJsonContents.assets[path.basename(TARGET_FAKE_MAIN_SCRIPT_PATH, ".js")] = {
+    fs.writeFileSync(this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER), FAKE_MAIN_SCRIPT);
+    this.originalGameJsonContents.main = "./" + this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER);
+    this.originalGameJsonContents.assets[path.basename(this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER), ".js")] = {
       type: "script",
-      path: TARGET_FAKE_MAIN_SCRIPT_PATH,
+      path: this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER),
       global: true,
     } as ScriptAssetConfigurationBase;
   }
@@ -150,12 +162,19 @@ export class AkashicEnvironment extends NodeEnvironment {
   }
 
   private removeTempFiles () {
-    if (fs.existsSync(TARGET_FAKE_MAIN_SCRIPT_PATH)) {
-      fs.rmSync(TARGET_FAKE_MAIN_SCRIPT_PATH);
+    if (fs.existsSync(this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER))) {
+      fs.rmSync(this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER));
     }
-    if (fs.existsSync(TARGET_FAKE_GAME_JSON_PATH)) {
-      fs.rmSync(TARGET_FAKE_GAME_JSON_PATH);
+    if (fs.existsSync(this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER))) {
+      fs.rmSync(this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER));
     }
+  }
+
+  resolveUUID (patternHolder: string) {
+    if (!this._uuid) {
+      throw new Error("uuid is not set")
+    }
+    return patternHolder.replace("{uuid}", this._uuid);
   }
 
   private screenshot (filename: string) {

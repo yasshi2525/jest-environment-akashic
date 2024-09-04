@@ -6,15 +6,32 @@ import {GameClient, GameContext} from "@akashic/headless-akashic";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from 'node:crypto'
+import process from 'node:process';
 
 const GAME_JSON_PATH = "game.json";
 const FAKE_MAIN_SCRIPT = "'use strict'\nmodule.exports = () => {}";
 const TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER = ".main.fake-{uuid}.js";
+const TARGET_FAKE_MAIN_SCRIPT_PATTERN = /\.main\.fake-.*\.js/;
 const FAKE_GAME_JSON_FILENAME_HOLDER = ".game.fake-{uuid}.json";
+const FAKE_GAME_JSON_PATTERN = /\.game\.fake-.*\.json/;
 const TARGET_FAKE_GAME_JSON_PATH_HOLDER = FAKE_GAME_JSON_FILENAME_HOLDER;
 const DEFAULT_SCREENSHOT_DIR = "tmp/screenshot";
 const PLAYER_NAME = "test-user-001";
 const TEST_SCENE_NAME = "__test-scene__";
+
+process.on("exit", (code) => {
+  for (const file of fs.readdirSync('.')) {
+    if (file.match(TARGET_FAKE_MAIN_SCRIPT_PATTERN)) {
+      // eslint-disable-next-line no-unused-vars
+      try { fs.rmSync(file, {force: true}); } catch (e) { /* suppress warning */ }
+    }
+    if (file.match(FAKE_GAME_JSON_PATTERN)) {
+      // eslint-disable-next-line no-unused-vars
+      try { fs.rmSync(file, {force: true}); } catch (e) { /* suppress warning */ }
+    }
+  }
+  process.exit(code);
+})
 
 /**
  * Akashic Engine の機能をサンドボックスとして利用可能にした環境
@@ -44,7 +61,6 @@ export class AkashicEnvironment extends NodeEnvironment {
   override async setup() {
     await super.setup();
     this._uuid = crypto.randomUUID()
-    process.on("SIGINT", () => this.removeTempFiles());
     this.createFakeGameJson();
     this.gameContext = new GameContext<3>({ gameJsonPath: this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER) });
     this.gameClient = await this.gameContext.getGameClient({
@@ -62,13 +78,13 @@ export class AkashicEnvironment extends NodeEnvironment {
   }
 
   override async teardown() {
-    this.removeTempFiles();
     if (this.gameClient) {
       this.gameClient = undefined;
     }
     if (this.gameContext) {
       await this.gameContext.destroy();
     }
+    this.removeTempFiles();
     await super.teardown();
   }
 
@@ -164,10 +180,10 @@ export class AkashicEnvironment extends NodeEnvironment {
 
   private removeTempFiles () {
     if (fs.existsSync(this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER))) {
-      fs.rmSync(this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER));
+      fs.rmSync(this.resolveUUID(TARGET_FAKE_MAIN_SCRIPT_PATH_HOLDER), { force: true });
     }
     if (fs.existsSync(this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER))) {
-      fs.rmSync(this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER));
+      fs.rmSync(this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER), { force: true });
     }
   }
 

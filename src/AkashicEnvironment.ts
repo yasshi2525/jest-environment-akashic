@@ -65,7 +65,7 @@ export class AkashicEnvironment extends NodeEnvironment {
     this.gameContext = new GameContext<3>({ gameJsonPath: this.resolveUUID(TARGET_FAKE_GAME_JSON_PATH_HOLDER) });
     this.gameClient = await this.gameContext.getGameClient({
       player: { id: PLAYER_NAME, name: PLAYER_NAME },
-      renderingMode: "canvas",
+      renderingMode: "@napi-rs/canvas",
     });
     await this.gameContext.step();
     const testScene = await this.prepareTestScene();
@@ -201,6 +201,6 @@ export class AkashicEnvironment extends NodeEnvironment {
     if (!fs.existsSync(this.screenshotDir)) {
       fs.mkdirSync(this.screenshotDir, { recursive: true });
     }
-    fs.writeFileSync(path.resolve(this.screenshotDir, filename), this.gameClient.getPrimarySurfaceCanvas().toBuffer());
+    fs.writeFileSync(path.resolve(this.screenshotDir, filename), this.gameClient.getPrimarySurfaceCanvas().toDataURL().replace(/^data:image\/png;base64,/, ""), "base64");
   }
 }
